@@ -86,5 +86,6 @@ class MyHandler(SimpleHTTPRequestHandler):
             )
 
 
-server = HTTPServer(('localhost', 8000), MyHandler)
-server.serve_forever()
+if __name__ == "__main__":
+    server = HTTPServer(('localhost', 8000), MyHandler)
+    server.serve_forever()

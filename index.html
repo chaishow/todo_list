@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom right, #a8e8ff, #88d1ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      width: 400px;
+      transition: all 0.3s ease-in-out;
+    }
+
+    h1 {
+      margin: 0 0 20px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    #tasks-container {
+      margin-bottom: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+      transition: max-height 0.3s ease-in-out;
+    }
+
+    .task-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 10px 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .task-container.removing {
+      animation: fadeOut 0.3s ease-in-out;
+      opacity: 0;
+    }
+
+    .task-text {
+      flex: 1;
+      text-align: left;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .task-actions button {
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .task-actions button.complete {
+      color: green;
+    }
+
+    .task-actions button.delete {
+      color: red;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button.add-task {
+      background-color: #4CAF50;
+      color: white;
+      margin-top: 10px;
+    }
+
+    button.clear-tasks {
+      background-color: #ff4d4d;
+      color: white;
+      margin-top: 10px;
+    }
+
+    button.add-task:hover {
+      background-color: #45a049;
+    }
+
+    button.clear-tasks:hover {
+      background-color: #e43d3d;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>To-Do List</h1>
+    <div id="tasks-container"></div>
+    <input type="text" id="task-input" placeholder="New task">
+    <button class="add-task" id="add-task-button">Add Task</button>
+    <button class="clear-tasks" id="clear-tasks-button">Clear All Tasks</button>
+  </div>
+  <script>
+    const tasksContainer = document.getElementById("tasks-container");
+    const taskInput = document.getElementById("task-input");
+    const addTaskButton = document.getElementById("add-task-button");
+    const clearTasksButton = document.getElementById("clear-tasks-button");
+
+    const backendUrl = "http://localhost:8000"; // Замените на ваш backend URL
+
+    function renderTasks(tasks) {
+      tasksContainer.innerHTML = ""; // Очищаем список перед рендером
+      tasks.forEach((task) => {
+        const taskElement = document.createElement("div");
+        taskElement.className = "task-container";
+
+        const taskText = document.createElement("span");
+        taskText.className = "task-text";
+        taskText.textContent = task.task;
+        if (task.done) taskText.style.textDecoration = "line-through";
+
+        const taskActions = document.createElement("div");
+        taskActions.className = "task-actions";
+
+        const completeButton = document.createElement("button");
+        completeButton.className = "complete";
+        completeButton.textContent = "✔";
+        completeButton.onclick = () => toggleTaskStatus(task.id);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete";
+        deleteButton.textContent = "✖";
+        deleteButton.onclick = () => deleteTask(task.id, taskElement);
+
+        taskActions.appendChild(completeButton);
+        taskActions.appendChild(deleteButton);
+
+        taskElement.appendChild(taskText);
+        taskElement.appendChild(taskActions);
+
+        tasksContainer.appendChild(taskElement);
+      });
+    }
+
+    async function fetchTasks() {
+      const response = await fetch(`${backendUrl}/tasks`);
+      const tasks = await response.json();
+      renderTasks(tasks);
+    }
+
+    addTaskButton.addEventListener("click", async () => {
+      const newTask = taskInput.value.trim();
+      if (newTask) {
+        await fetch(`${backendUrl}/tasks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task: newTask }),
+        });
+        taskInput.value = ""; // Очистить поле ввода
+        fetchTasks();
+      }
+    });
+
+    clearTasksButton.addEventListener("click", async () => {
+      await fetch(`${backendUrl}/tasks`, { method: "DELETE" });
+      fetchTasks();
+    });
+
+    async function deleteTask(id, taskElement) {
+      taskElement.classList.add("removing");
+      setTimeout(async () => {
+        await fetch(`${backendUrl}/tasks/${id}`, { method: "DELETE" });
+        fetchTasks();
+      }, 300); // Длительность анимации fadeOut
+    }
+
+    async function toggleTaskStatus(id) {
+      await fetch(`${backendUrl}/tasks/${id}/status`, { method: "PUT" });
+      fetchTasks();
+    }
+
+    fetchTasks();
+  </script>
+</body>
+</html>
